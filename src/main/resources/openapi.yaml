@@ -1,0 +1,1217 @@
+openapi: 3.1.1
+info:
+  title: Distributed Messenger API
+  version: 1.0.0
+servers:
+- description: API Version 2
+  url: /api/v2
+security:
+- bearerAuth: []
+tags:
+- description: Операции регистрации и входа в систему.
+  name: Authentication
+- description: Управление профилями пользователей.
+  name: Users
+- description: Управление чатами (полный CRUD).
+  name: Chats
+- description: Управление сообщениями и их историей.
+  name: Messages
+- description: Загрузка и управление файлами.
+  name: Files
+- description: Управление блокировками пользователей.
+  name: Blocking
+- description: Управление настройками пользователя.
+  name: Settings
+paths:
+  /auth/register:
+    post:
+      operationId: registerUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreate"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Пользователь создан.
+        "409":
+          description: Пользователь с таким именем уже существует.
+      security: []
+      summary: Регистрация нового пользователя
+      tags:
+      - Authentication
+  /auth/login:
+    post:
+      operationId: loginUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserLogin"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthToken"
+          description: Успешный вход.
+        "401":
+          description: Ошибка аутентификации.
+      security: []
+      summary: Аутентификация пользователя
+      tags:
+      - Authentication
+  /users:
+    get:
+      operationId: getAllUsers
+      parameters:
+      - explode: true
+        in: query
+        name: username
+        required: false
+        schema:
+          type: string
+        style: form
+      - description: Номер страницы
+        explode: true
+        in: query
+        name: page
+        required: false
+        schema:
+          default: 1
+          type: integer
+        style: form
+      - description: Количество элементов на странице
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 25
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedUsers"
+          description: Страница со списком пользователей.
+        "403":
+          description: Доступ запрещен.
+      summary: Получить список всех пользователей (Admin)
+      tags:
+      - Users
+  /users/{userId}:
+    delete:
+      operationId: deleteUser
+      parameters:
+      - explode: false
+        in: path
+        name: userId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: Пользователь удален.
+        "403":
+          description: Доступ запрещен.
+        "404":
+          description: Пользователь не найден.
+      summary: Удалить пользователя по ID (Admin)
+      tags:
+      - Users
+    get:
+      operationId: getUserById
+      parameters:
+      - explode: false
+        in: path
+        name: userId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Профиль пользователя.
+        "404":
+          description: Пользователь не найден.
+      summary: Получить пользователя по ID
+      tags:
+      - Users
+    patch:
+      operationId: updateUser
+      parameters:
+      - explode: false
+        in: path
+        name: userId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+          description: Пользователь обновлен.
+        "403":
+          description: Доступ запрещен.
+        "404":
+          description: Пользователь не найден.
+      summary: Обновить пользователя по ID
+      tags:
+      - Users
+  /chats:
+    get:
+      description: Возвращает список чатов. Требуется фильтрация по `userId`.
+      operationId: getChats
+      parameters:
+      - description: Фильтр для получения чатов конкретного пользователя.
+        explode: true
+        in: query
+        name: userId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: page
+        required: false
+        schema:
+          default: 1
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 25
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedChats"
+          description: Страница со списком чатов.
+        "403":
+          description: Доступ запрещен.
+      summary: Получить список чатов
+      tags:
+      - Chats
+    post:
+      operationId: createChat
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatCreate"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chat"
+          description: Чат создан.
+      summary: Создать новый чат
+      tags:
+      - Chats
+  /chats/{chatId}:
+    delete:
+      operationId: deleteChat
+      parameters:
+      - explode: false
+        in: path
+        name: chatId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: Чат удален.
+        "404":
+          description: Чат не найден.
+      summary: Удалить чат
+      tags:
+      - Chats
+    get:
+      operationId: getChatById
+      parameters:
+      - explode: false
+        in: path
+        name: chatId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chat"
+          description: Информация о чате.
+        "404":
+          description: Чат не найден.
+      summary: Получить чат по ID
+      tags:
+      - Chats
+    patch:
+      operationId: updateChat
+      parameters:
+      - explode: false
+        in: path
+        name: chatId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatUpdate"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chat"
+          description: Чат обновлен.
+        "404":
+          description: Чат не найден.
+      summary: Обновить название чата
+      tags:
+      - Chats
+  /chats/{chatId}/messages:
+    get:
+      operationId: getChatMessages
+      parameters:
+      - explode: false
+        in: path
+        name: chatId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      - explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          type: integer
+        style: form
+      - description: Курсор для получения сообщений старше указанной временной метки.
+        explode: true
+        in: query
+        name: before_timestamp
+        required: false
+        schema:
+          format: date-time
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedMessages"
+          description: Страница со списком сообщений.
+        "404":
+          description: Чат не найден.
+      summary: Получить историю сообщений
+      tags:
+      - Messages
+    post:
+      operationId: sendMessage
+      parameters:
+      - explode: false
+        in: path
+        name: chatId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageCreate"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+          description: Сообщение создано.
+        "404":
+          description: Чат не найден.
+      summary: Отправить сообщение
+      tags:
+      - Messages
+  /chats/{chatId}/messages/{messageId}:
+    delete:
+      operationId: deleteMessage
+      parameters:
+      - explode: false
+        in: path
+        name: chatId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: messageId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: Сообщение удалено.
+        "403":
+          description: Доступ запрещен.
+        "404":
+          description: Сообщение не найдено.
+      summary: Удалить сообщение
+      tags:
+      - Messages
+    get:
+      operationId: getMessageById
+      parameters:
+      - explode: false
+        in: path
+        name: chatId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: messageId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+          description: Данные сообщения.
+        "404":
+          description: Сообщение не найдено.
+      summary: Получить сообщение по ID
+      tags:
+      - Messages
+    patch:
+      operationId: editMessage
+      parameters:
+      - explode: false
+        in: path
+        name: chatId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: messageId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageUpdate"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+          description: Сообщение обновлено.
+        "403":
+          description: Доступ запрещен.
+        "404":
+          description: Сообщение не найдено.
+      summary: Редактировать сообщение
+      tags:
+      - Messages
+  /chats/{chatId}/messages/{messageId}/history:
+    get:
+      operationId: getMessageHistory
+      parameters:
+      - explode: false
+        in: path
+        name: chatId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: messageId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/MessageHistory"
+                type: array
+          description: Список изменений.
+        "404":
+          description: Сообщение не найдено.
+      summary: Получить историю изменений сообщения
+      tags:
+      - Messages
+  /files:
+    post:
+      operationId: uploadFile
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/uploadFile_request"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/File"
+          description: Файл успешно загружен.
+      summary: Загрузить новый файл
+      tags:
+      - Files
+  /files/{fileId}/download:
+    get:
+      operationId: downloadFile
+      parameters:
+      - explode: false
+        in: path
+        name: fileId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/octet-stream:
+              schema:
+                format: binary
+                type: string
+          description: Содержимое файла.
+          headers:
+            Content-Disposition:
+              description: Позволяет клиенту (браузеру) сохранить файл с оригинальным
+                именем.
+              explode: false
+              schema:
+                example: attachment; filename="example.jpg"
+                type: string
+              style: simple
+        "404":
+          description: Файл не найден.
+      summary: Скачать файл по ID
+      tags:
+      - Files
+  /files/{fileId}:
+    delete:
+      operationId: deleteFile
+      parameters:
+      - explode: false
+        in: path
+        name: fileId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: Файл удален.
+        "404":
+          description: Файл не найден.
+      summary: Удалить файл
+      tags:
+      - Files
+    get:
+      operationId: getFileMetadata
+      parameters:
+      - explode: false
+        in: path
+        name: fileId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/File"
+          description: Метаданные файла.
+        "404":
+          description: Файл не найден.
+      summary: Получить метаданные файла
+      tags:
+      - Files
+  /users/{userId}/blocks:
+    get:
+      operationId: getBlockedUsers
+      parameters:
+      - explode: false
+        in: path
+        name: userId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      - description: Номер страницы
+        explode: true
+        in: query
+        name: page
+        required: false
+        schema:
+          default: 1
+          type: integer
+        style: form
+      - description: Количество элементов на странице
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 25
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedBlocks"
+          description: Страница со списком блокировок.
+        "403":
+          description: Доступ запрещен.
+      summary: Получить список заблокированных пользователей для userId
+      tags:
+      - Blocking
+    post:
+      operationId: blockUser
+      parameters:
+      - explode: false
+        in: path
+        name: userId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BlockCreate"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Block"
+          description: Пользователь заблокирован.
+        "403":
+          description: Доступ запрещен.
+      summary: Заблокировать пользователя от имени userId
+      tags:
+      - Blocking
+  /users/{userId}/blocks/{blockedUserId}:
+    delete:
+      operationId: unblockUser
+      parameters:
+      - explode: false
+        in: path
+        name: userId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: blockedUserId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: Пользователь разблокирован.
+        "403":
+          description: Доступ запрещен.
+        "404":
+          description: Запись о блокировке не найдена.
+      summary: Разблокировать пользователя от имени userId
+      tags:
+      - Blocking
+  /users/{userId}/settings:
+    get:
+      operationId: getAppSettings
+      parameters:
+      - explode: false
+        in: path
+        name: userId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettings"
+          description: Объект с настройками.
+        "403":
+          description: Доступ запрещен.
+      summary: Получить настройки пользователя
+      tags:
+      - Settings
+    patch:
+      operationId: updateAppSettings
+      parameters:
+      - explode: false
+        in: path
+        name: userId
+        required: true
+        schema:
+          format: uuid
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppSettings"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettings"
+          description: Настройки обновлены.
+        "403":
+          description: Доступ запрещен.
+      summary: Обновить настройки пользователя
+      tags:
+      - Settings
+components:
+  schemas:
+    User:
+      example:
+        profileSettingsId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        role: UNAUTHORIZED_USER
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        appSettingsId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        username: username
+      properties:
+        id:
+          format: uuid
+          type: string
+        username:
+          type: string
+        role:
+          enum:
+          - UNAUTHORIZED_USER
+          - USER
+          - MODERATOR
+          - ADMINISTRATOR
+          type: string
+        profileSettingsId:
+          format: uuid
+          type: string
+        appSettingsId:
+          format: uuid
+          type: string
+      required:
+      - id
+      - role
+      - username
+    UserCreate:
+      example:
+        role: USER
+        username: username
+      properties:
+        username:
+          type: string
+        role:
+          default: USER
+          enum:
+          - USER
+          - MODERATOR
+          - ADMINISTRATOR
+          type: string
+      required:
+      - username
+    UserLogin:
+      example:
+        password: password
+        username: username
+      properties:
+        username:
+          type: string
+        password:
+          format: password
+          type: string
+      required:
+      - password
+      - username
+    UserUpdate:
+      example:
+        role: USER
+        username: username
+      properties:
+        username:
+          type: string
+        role:
+          enum:
+          - USER
+          - MODERATOR
+          - ADMINISTRATOR
+          type: string
+    Chat:
+      example:
+        name: name
+        creatorId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        companionId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        isGroupChat: true
+      properties:
+        id:
+          format: uuid
+          type: string
+        name:
+          type: string
+        creatorId:
+          format: uuid
+          type: string
+        isGroupChat:
+          type: boolean
+        companionId:
+          format: uuid
+          type: string
+          nullable: true
+    ChatCreate:
+      example:
+        name: name
+        companionId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        isGroupChat: false
+      properties:
+        name:
+          description: Необязательное имя чата.
+          type: string
+        companionId:
+          format: uuid
+          type: string
+        isGroupChat:
+          default: false
+          type: boolean
+      required:
+      - companionId
+    ChatUpdate:
+      example:
+        name: name
+      properties:
+        name:
+          type: string
+    Message:
+      example:
+        senderId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        chatId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        content: content
+        fileId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        id:
+          format: uuid
+          type: string
+        senderId:
+          format: uuid
+          type: string
+        chatId:
+          format: uuid
+          type: string
+        content:
+          type: string
+        fileId:
+          format: uuid
+          type: string
+          nullable: true
+        timestamp:
+          format: date-time
+          type: string
+      required:
+      - chatId
+      - content
+      - id
+      - senderId
+      - timestamp
+    MessageHistory:
+      example:
+        historyId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        messageId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        editTimestamp: 2000-01-23T04:56:07.000+00:00
+        editedContent: editedContent
+      properties:
+        historyId:
+          format: uuid
+          type: string
+        messageId:
+          format: uuid
+          type: string
+        editedContent:
+          type: string
+        editTimestamp:
+          format: date-time
+          type: string
+      required:
+      - editTimestamp
+      - editedContent
+      - historyId
+      - messageId
+    MessageCreate:
+      example:
+        content: content
+        fileId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        content:
+          type: string
+        fileId:
+          format: uuid
+          type: string
+          nullable: true
+      required:
+      - content
+    MessageUpdate:
+      example:
+        content: content
+      properties:
+        content:
+          type: string
+      required:
+      - content
+    File:
+      example:
+        path: https://openapi-generator.tech
+        name: name
+        uploadedTimestamp: 2000-01-23T04:56:07.000+00:00
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        type: type
+        uploadedBy: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        id:
+          format: uuid
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          nullable: true
+        path:
+          format: uri
+          type: string
+        uploadedBy:
+          format: uuid
+          type: string
+        uploadedTimestamp:
+          format: date-time
+          type: string
+      required:
+      - id
+      - name
+      - path
+      - uploadedBy
+      - uploadedTimestamp
+    Block:
+      example:
+        reason: reason
+        blockedUserId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        blockerId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        id:
+          format: uuid
+          type: string
+        blockerId:
+          format: uuid
+          type: string
+        blockedUserId:
+          format: uuid
+          type: string
+        reason:
+          type: string
+          nullable: true
+        timestamp:
+          format: date-time
+          type: string
+      required:
+      - blockedUserId
+      - blockerId
+      - id
+      - timestamp
+    BlockCreate:
+      example:
+        reason: reason
+        blockedUserId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        blockedUserId:
+          format: uuid
+          type: string
+        reason:
+          type: string
+          nullable: true
+      required:
+      - blockedUserId
+    AppSettings:
+      example:
+        MAX_FILE_SIZE: 6
+        THEME: 0
+        HISTORY_STORAGE: 5
+        MESSAGE_ENCRYPTION: 1
+      properties:
+        THEME:
+          description: "0: System, 1: Light, 2: Dark"
+          enum:
+          - 0
+          - 1
+          - 2
+          type: integer
+        MAX_FILE_SIZE:
+          enum:
+          - 10
+          - 50
+          - 100
+          type: integer
+        MESSAGE_ENCRYPTION:
+          enum:
+          - 0
+          - 1
+          type: integer
+        HISTORY_STORAGE:
+          enum:
+          - 7
+          - 30
+          - 365
+          type: integer
+    AuthToken:
+      example:
+        accessToken: accessToken
+        userId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        accessToken:
+          format: jwt
+          type: string
+        userId:
+          format: uuid
+          type: string
+    Error:
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+    PaginationInfo:
+      description: Метаданные для постраничной навигации.
+      example:
+        totalItems: 0
+        totalPages: 6
+        limit: 5
+        currentPage: 1
+      properties:
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+        currentPage:
+          type: integer
+        limit:
+          type: integer
+    PaginatedUsers:
+      example:
+        pagination:
+          totalItems: 0
+          totalPages: 6
+          limit: 5
+          currentPage: 1
+        items:
+        - profileSettingsId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          role: UNAUTHORIZED_USER
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          appSettingsId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          username: username
+        - profileSettingsId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          role: UNAUTHORIZED_USER
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          appSettingsId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          username: username
+      properties:
+        items:
+          items:
+            $ref: "#/components/schemas/User"
+          type: array
+        pagination:
+          $ref: "#/components/schemas/PaginationInfo"
+    PaginatedChats:
+      example:
+        pagination:
+          totalItems: 0
+          totalPages: 6
+          limit: 5
+          currentPage: 1
+        items:
+        - name: name
+          creatorId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          companionId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          isGroupChat: true
+        - name: name
+          creatorId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          companionId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          isGroupChat: true
+      properties:
+        items:
+          items:
+            $ref: "#/components/schemas/Chat"
+          type: array
+        pagination:
+          $ref: "#/components/schemas/PaginationInfo"
+    PaginatedBlocks:
+      example:
+        pagination:
+          totalItems: 0
+          totalPages: 6
+          limit: 5
+          currentPage: 1
+        items:
+        - reason: reason
+          blockedUserId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          blockerId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          timestamp: 2000-01-23T04:56:07.000+00:00
+        - reason: reason
+          blockedUserId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          blockerId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        items:
+          items:
+            $ref: "#/components/schemas/Block"
+          type: array
+        pagination:
+          $ref: "#/components/schemas/PaginationInfo"
+    PaginatedMessages:
+      description: "Страница с сообщениями, использующая курсорную пагинацию."
+      example:
+        nextCursor: 2000-01-23T04:56:07.000+00:00
+        hasNextPage: true
+        items:
+        - senderId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          chatId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          content: content
+          fileId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          timestamp: 2000-01-23T04:56:07.000+00:00
+        - senderId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          chatId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          content: content
+          fileId: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        items:
+          items:
+            $ref: "#/components/schemas/Message"
+          type: array
+        nextCursor:
+          description: Timestamp последнего сообщения для запроса следующей страницы.
+          format: date-time
+          type: string
+          nullable: true
+        hasNextPage:
+          type: boolean
+    uploadFile_request:
+      properties:
+        file:
+          format: binary
+          type: string
+  securitySchemes:
+    bearerAuth:
+      bearerFormat: JWT
+      scheme: bearer
+      type: http

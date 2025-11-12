@@ -1,0 +1,20 @@
+{
+  "library": "spring-boot",
+  "useSpringBoot3": true,
+  "useTags": true,
+  "documentationProvider": "springdoc",
+  "serviceInterface": true,
+  "interfaceOnly": false,
+  "packageName": "com.dims.api",
+  "apiPackage": "com.dims.api.controller",
+  "modelPackage": "com.dims.api.model",
+  "invokerPackage": "com.dims.api.invoker",
+  "groupId": "com.dims",
+  "artifactId": "lab-03",
+  "useJakartaEe": true
+}
+
+// openapi-generator generate \                                                                                                                              ✔ 
+//   -i open_api.yaml \
+//   -g kotlin-spring \
+//   -c config.json

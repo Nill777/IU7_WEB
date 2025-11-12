@@ -1,0 +1,38 @@
+server:
+  port: 8080
+
+# Основные настройки Spring Boot приложения
+spring:
+  # Имя приложения (уже было у вас)
+  application:
+    name: distributedMessenger
+
+  # Настройки для работы с JSON (уже были у вас)
+  jackson:
+    serialization:
+      WRITE_DATES_AS_TIMESTAMPS: false
+
+  # Настройки для H2 (встраиваемая база данных)
+  h2:
+    console:
+      enabled: true   # Включаем веб-консоль для просмотра БД в браузере
+      path: /h2-console # Адрес, по которому будет доступна консоль
+
+  # Настройки подключения к источнику данных (наша H2 база)
+  datasource:
+    url: jdbc:h2:mem:weblabdb # URL для подключения к БД в памяти
+    driverClassName: org.h2.Driver
+    username: sa
+    password: password
+
+  # Настройки JPA (для работы с БД через Entity)
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect # Указываем, что работаем с H2
+    hibernate:
+      ddl-auto: update # Автоматически создавать/обновлять таблицы в БД
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html # Адрес, по которому будет доступен Swagger
+file:
+  upload-dir: ./uploads
