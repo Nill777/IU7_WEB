@@ -36,3 +36,8 @@ springdoc:
     path: /swagger-ui.html # Адрес, по которому будет доступен Swagger
 file:
   upload-dir: ./uploads
+jwt:
+  # ключ
+  secret: ThisIsASecretKeyForWebLabAndItShouldBeLongEnoughAndSecureAndRandom123
+  # Время жизни токена в миллисекундах (1 час)
+  expiration: 3600000

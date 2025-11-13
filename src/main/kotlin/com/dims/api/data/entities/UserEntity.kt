@@ -8,6 +8,7 @@ import java.util.UUID
 class UserEntity(
     @Id @GeneratedValue(strategy = GenerationType.AUTO) val id: UUID? = null,
     @Column(unique = true, nullable = false) var username: String,
+    @Column(nullable = false) var password: String,
     @Column(nullable = false) var role: String,
     // Связь "один к одному". CascadeType.ALL означает, что при сохранении,
     // обновлении или удалении User, то же самое произойдет и с его AppSettings.

@@ -1,38 +1,50 @@
 package com.dims.api.domain.services
 
+import com.dims.api.config.JwtTokenUtil
 import com.dims.api.controller.AuthenticationApiService
 import com.dims.api.controller.UsersApiService
 import com.dims.api.data.entities.AppSettingsEntity
-import com.dims.api.data.repositories.UserRepository
 import com.dims.api.data.entities.UserEntity
-import com.dims.api.model.PaginationInfo
+import com.dims.api.data.repositories.UserRepository
+import com.dims.api.model.AuthToken
 import com.dims.api.model.PaginatedUsers
-import com.dims.api.model.User as UserDto
+import com.dims.api.model.PaginationInfo
 import com.dims.api.model.UserCreate
 import com.dims.api.model.UserUpdate
-import com.dims.api.core.User as DomainUser
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpStatus
+import org.springframework.security.authentication.AuthenticationManager
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
-import java.util.UUID
+import java.util.*
+import com.dims.api.core.User as DomainUser
+import com.dims.api.model.User as UserDto
 
 @Service
 class UserService(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val passwordEncoder: PasswordEncoder,
+    private val authenticationManager: AuthenticationManager,
+    private val jwtTokenUtil: JwtTokenUtil
 ) : AuthenticationApiService, UsersApiService {
 
     // --- AuthenticationApiService ---
 
     override fun registerUser(userCreate: UserCreate): UserDto {
         if (userRepository.findByUsername(userCreate.username) != null) {
-            throw ResponseStatusException(HttpStatus.CONFLICT, "User with username '${userCreate.username}' already exists.")
+            throw ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "User with username '${userCreate.username}' already exists."
+            )
         }
 
         val userEntity = UserEntity(
             username = userCreate.username,
+            password = passwordEncoder.encode(userCreate.password),
             role = userCreate.role?.value ?: "USER"
         )
 
@@ -46,8 +58,18 @@ class UserService(
     }
 
     override fun loginUser(userLogin: com.dims.api.model.UserLogin): com.dims.api.model.AuthToken {
-        // Реализация JWT будет в следующем шаге, если успеем
-        throw ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Login not implemented yet")
+        // Аутентифицируем пользователя. Если пароль/логин неверны, здесь выбросится исключение
+        authenticationManager.authenticate(
+            UsernamePasswordAuthenticationToken(userLogin.username, userLogin.password)
+        )
+
+        // Если аутентификация прошла, ищем пользователя и генерируем токен
+        val user = userRepository.findByUsername(userLogin.username)
+            ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User disappeared after authentication")
+
+        val token = jwtTokenUtil.generateToken(user)
+
+        return AuthToken(accessToken = token, userId = user.id)
     }
 
     // --- UsersApiService ---

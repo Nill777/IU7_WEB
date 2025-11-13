@@ -25,6 +25,9 @@ data class UserCreate(
     @Schema(example = "null", required = true, description = "")
     @get:JsonProperty("username", required = true) val username: kotlin.String,
 
+    @Schema(example = "null", required = true, description = "")
+    @get:JsonProperty("password", required = true) val password: kotlin.String,
+
     @Schema(example = "null", description = "")
     @get:JsonProperty("role") val role: UserCreate.Role? = Role.USER
     ) {
