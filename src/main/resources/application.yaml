@@ -1,5 +1,13 @@
 server:
   port: 8080
+  tomcat:
+    accesslog:
+      enabled: true
+      buffered: false
+      directory: logs         # Папка для логов в корне проекта
+      prefix: access_log
+      suffix: .log
+      pattern: common       # Стандартный формат лога
 
 # Основные настройки Spring Boot приложения
 spring:
