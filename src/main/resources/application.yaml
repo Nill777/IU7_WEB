@@ -26,18 +26,29 @@ spring:
       enabled: true   # Включаем веб-консоль для просмотра БД в браузере
       path: /h2-console # Адрес, по которому будет доступна консоль
 
-  # Настройки подключения к источнику данных (наша H2 база)
+#  # Настройки подключения к источнику данных (наша H2 база)
+#  datasource:
+#    url: jdbc:h2:mem:weblabdb # URL для подключения к БД в памяти
+#    driverClassName: org.h2.Driver
+#    username: admin
+#    password: admin
+#
+#  # Настройки JPA (для работы с БД через Entity)
+#  jpa:
+#    database-platform: org.hibernate.dialect.H2Dialect # Указываем, что работаем с H2
+#    hibernate:
+#      ddl-auto: update # Автоматически создавать/обновлять таблицы в БД
   datasource:
-    url: jdbc:h2:mem:weblabdb # URL для подключения к БД в памяти
-    driverClassName: org.h2.Driver
-    username: sa
-    password: password
+    # Используем DNS-имя 'postgres' из docker-compose
+    url: jdbc:postgresql://postgres:5432/weblab_db
+    username: admin
+    password: admin
+    driverClassName: org.postgresql.Driver
 
-  # Настройки JPA (для работы с БД через Entity)
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect # Указываем, что работаем с H2
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: update # Автоматически создавать/обновлять таблицы в БД
+      ddl-auto: update # Hibernate будет управлять схемой БД
 
 springdoc:
   swagger-ui:
