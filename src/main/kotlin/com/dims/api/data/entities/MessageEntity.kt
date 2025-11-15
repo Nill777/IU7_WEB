@@ -17,7 +17,7 @@ class MessageEntity(
     @Column(nullable = false)
     var chatId: UUID,
 
-    @Column(nullable = false, length = 4096) // Увеличим длину для больших сообщений
+    @Column(nullable = false, length = 4096)
     var content: String,
 
     var fileId: UUID?,
@@ -25,8 +25,8 @@ class MessageEntity(
     @Column(nullable = false)
     var timestamp: OffsetDateTime,
 
-    // Связь "один ко многим": одно сообщение может иметь много записей в истории
+    // одно сообщение может иметь много записей в истории
     @OneToMany(mappedBy = "message", cascade = [CascadeType.ALL], orphanRemoval = true)
-    @OrderBy("editTimestamp ASC") // Сортируем историю по времени
+    @OrderBy("editTimestamp ASC") // сортируем историю по времени
     var history: MutableList<MessageHistoryEntity> = mutableListOf()
 )

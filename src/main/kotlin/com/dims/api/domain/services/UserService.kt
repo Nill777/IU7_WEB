@@ -32,8 +32,6 @@ class UserService(
     private val jwtTokenUtil: JwtTokenUtil
 ) : AuthenticationApiService, UsersApiService {
 
-    // --- AuthenticationApiService ---
-
     override fun registerUser(userCreate: UserCreate): UserDto {
         if (userRepository.findByUsername(userCreate.username) != null) {
             throw ResponseStatusException(
@@ -48,7 +46,7 @@ class UserService(
             role = userCreate.role?.value ?: "USER"
         )
 
-        // Создаем настройки по умолчанию и связываем их с пользователем
+        // настройки по умолчанию и связываем с пользователем
         val defaultSettings = AppSettingsEntity()
         userEntity.appSettings = defaultSettings
         defaultSettings.user = userEntity
@@ -58,12 +56,11 @@ class UserService(
     }
 
     override fun loginUser(userLogin: com.dims.api.model.UserLogin): com.dims.api.model.AuthToken {
-        // Аутентифицируем пользователя. Если пароль/логин неверны, здесь выбросится исключение
         authenticationManager.authenticate(
             UsernamePasswordAuthenticationToken(userLogin.username, userLogin.password)
         )
 
-        // Если аутентификация прошла, ищем пользователя и генерируем токен
+        // аутентификация прошла, ищем пользователя и генерируем токен
         val user = userRepository.findByUsername(userLogin.username)
             ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User disappeared after authentication")
 
@@ -72,7 +69,6 @@ class UserService(
         return AuthToken(accessToken = token, userId = user.id)
     }
 
-    // --- UsersApiService ---
 
     override fun getUserById(userId: UUID): UserDto {
         val userEntity = userRepository.findByIdOrNull(userId)
@@ -82,52 +78,43 @@ class UserService(
     }
 
     override fun deleteUser(userId: UUID) {
-        // Сначала проверяем, существует ли пользователь, чтобы вернуть правильную ошибку
         if (!userRepository.existsById(userId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: $userId")
         }
         userRepository.deleteById(userId)
-        // Метод ничего не возвращает, контроллер отправит ответ 204 No Content
     }
 
     override fun getAllUsers(username: String?, page: Int, limit: Int): PaginatedUsers {
-        // Spring Data JPA использует нумерацию страниц с 0, а API обычно с 1.
-        // Поэтому отнимаем единицу от номера страницы.
+        // Spring Data JPA использует нумерацию страниц с 0, а API обычно с 1
         val pageable: Pageable = PageRequest.of(page - 1, limit)
 
-        // Выбираем, какой метод репозитория использовать, в зависимости от того,
-        // был ли передан параметр для фильтрации по имени.
         val userPage = if (username.isNullOrBlank()) {
             userRepository.findAll(pageable)
         } else {
             userRepository.findByUsernameContaining(username, pageable)
         }
 
-        // Конвертируем каждую найденную сущность в DTO
         val userDtos = userPage.content.map { it.toDomain().toDto() }
 
-        // Собираем DTO для ответа, включая информацию о пагинации
         return PaginatedUsers(
             items = userDtos,
             pagination = PaginationInfo(
                 totalItems = userPage.totalElements.toInt(),
                 totalPages = userPage.totalPages,
-                currentPage = userPage.number + 1, // Возвращаем 1-based номер страницы
+                currentPage = userPage.number + 1,
                 limit = userPage.size
             )
         )
     }
 
     override fun updateUser(userId: UUID, userUpdate: UserUpdate?): UserDto {
-        // Находим существующего пользователя в БД. Если не найден - ошибка 404.
         val existingUser = userRepository.findByIdOrNull(userId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with id: $userId")
 
-        // Применяем изменения, если они были переданы в DTO
+        // изменения
         userUpdate?.let { update ->
-            // Обновляем имя, если оно было передано
             update.username?.let { newUsername ->
-                // Дополнительная проверка: новое имя не должно быть занято другим пользователем
+                // имя не должно быть занято
                 userRepository.findByUsername(newUsername)?.let {
                     if (it.id != userId) {
                         throw ResponseStatusException(HttpStatus.CONFLICT, "Username '$newUsername' is already taken.")
@@ -135,19 +122,15 @@ class UserService(
                 }
                 existingUser.username = newUsername
             }
-            // Обновляем роль, если она была передана
             update.role?.let { newRole ->
                 existingUser.role = newRole.value
             }
         }
 
-        // Сохраняем обновленную сущность и возвращаем ее в виде DTO
         val savedEntity = userRepository.save(existingUser)
         return savedEntity.toDomain().toDto()
     }
 }
-
-// --- Мапперы ---
 
 fun UserEntity.toDomain(): DomainUser {
     return DomainUser(

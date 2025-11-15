@@ -20,7 +20,7 @@ class SettingsServiceImpl(
         val user = userRepository.findByIdOrNull(userId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
 
-        // Получаем настройки через связь в UserEntity
+        // настройки через связь в UserEntity
         val settingsEntity = user.appSettings
             ?: throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Settings not found for user")
 
@@ -41,14 +41,12 @@ class SettingsServiceImpl(
             dto.historyStorage?.let { settingsToUpdate.historyStorage = it.value }
         }
 
-        // Мы сохраняем User, а JPA благодаря CascadeType.ALL автоматически сохранит изменения в AppSettings
+        // сохраняем User, а JPA используя CascadeType.ALL автоматически сохранит изменения в AppSettings
         val updatedUser = userRepository.save(user)
 
         return updatedUser.appSettings!!.toDomain().toDto()
     }
 }
-
-// --- Мапперы ---
 
 private fun AppSettingsEntity.toDomain(): DomainAppSettings {
     return DomainAppSettings(

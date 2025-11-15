@@ -4,59 +4,55 @@ server:
     accesslog:
       enabled: true
       buffered: false
-      directory: logs         # Папка для логов в корне проекта
+      directory: logs         # папка для логов в корне проекта
       prefix: access_log
       suffix: .log
-      pattern: common       # Стандартный формат лога
+      pattern: common       # стандартный формат лога
 
-# Основные настройки Spring Boot приложения
+# настройки Spring Boot приложения
 spring:
-  # Имя приложения (уже было у вас)
   application:
     name: distributedMessenger
 
-  # Настройки для работы с JSON (уже были у вас)
+  # JSON
   jackson:
     serialization:
       WRITE_DATES_AS_TIMESTAMPS: false
 
-  # Настройки для H2 (встраиваемая база данных)
+  # H2 база данных
   h2:
     console:
-      enabled: true   # Включаем веб-консоль для просмотра БД в браузере
-      path: /h2-console # Адрес, по которому будет доступна консоль
+      enabled: true   # веб-консоль для просмотра БД в браузере
+      path: /h2-console
 
-#  # Настройки подключения к источнику данных (наша H2 база)
-#  datasource:
-#    url: jdbc:h2:mem:weblabdb # URL для подключения к БД в памяти
-#    driverClassName: org.h2.Driver
-#    username: admin
-#    password: admin
-#
-#  # Настройки JPA (для работы с БД через Entity)
-#  jpa:
-#    database-platform: org.hibernate.dialect.H2Dialect # Указываем, что работаем с H2
-#    hibernate:
-#      ddl-auto: update # Автоматически создавать/обновлять таблицы в БД
+  # настройки подключения к H2
   datasource:
-    # Используем DNS-имя 'postgres' из docker-compose
-    url: jdbc:postgresql://postgres:5432/weblab_db
+    url: jdbc:h2:mem:weblabdb
+    driverClassName: org.h2.Driver
     username: admin
     password: admin
-    driverClassName: org.postgresql.Driver
 
+  # настройки JPA (для работы с БД через Entity)
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    database-platform: org.hibernate.dialect.H2Dialect # указываем H2
     hibernate:
-      ddl-auto: update # Hibernate будет управлять схемой БД
+      ddl-auto: update # автоматически создавать/обновлять таблицы в БД
+#  datasource:
+#    # DNS-имя postgres из docker-compose
+#    url: jdbc:postgresql://postgres:5432/weblab_db
+#    username: admin
+#    password: admin
+#    driverClassName: org.postgresql.Driver
+#
+#  jpa:
+#    database-platform: org.hibernate.dialect.PostgreSQLDialect
+#    hibernate:
+#      ddl-auto: update # Hibernate будет управлять схемой БД
 
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html # Адрес, по которому будет доступен Swagger
 file:
   upload-dir: ./uploads
 jwt:
-  # ключ
+  # ключ 512+
   secret: ThisIsASecretKeyForWebLabAndItShouldBeLongEnoughAndSecureAndRandom123
-  # Время жизни токена в миллисекундах (1 час)
+  # время жизни токена в миллисекундах (1 час)
   expiration: 3600000

@@ -27,13 +27,12 @@ class FilesServiceImpl(
     private val fileRepository: FileRepository
 ) : FilesApiService {
 
-    // Внедряем путь к директории из application.properties
     @Value("\${file.upload-dir}")
     private lateinit var uploadDir: String
 
     private lateinit var rootLocation: Path
 
-    // Этот метод выполнится один раз после создания сервиса
+    // выполнится один раз после создания сервиса
     @PostConstruct
     fun init() {
         rootLocation = Paths.get(uploadDir)
@@ -48,11 +47,10 @@ class FilesServiceImpl(
         }
 
         val originalFilename = file.originalFilename ?: "file"
-        // Генерируем уникальное имя файла, чтобы избежать конфликтов
         val storedFilename = "${UUID.randomUUID()}-${originalFilename}"
         val destinationFile = rootLocation.resolve(storedFilename).normalize().toAbsolutePath()
 
-        // Копируем содержимое загруженного файла в наше хранилище
+        // копируем файл в хранилище
         file.inputStream.use { inputStream ->
             Files.copy(inputStream, destinationFile)
         }
@@ -60,8 +58,7 @@ class FilesServiceImpl(
         val entity = FileEntity(
             name = originalFilename,
             type = file.contentType,
-            path = storedFilename, // В БД храним только уникальное имя файла
-            // TODO: Заменить на ID реального пользователя из SecurityContext, когда будет JWT
+            path = storedFilename,
             uploadedBy = UUID.randomUUID(),
             uploadedTimestamp = OffsetDateTime.now()
         )
@@ -99,16 +96,13 @@ class FilesServiceImpl(
         val entity = fileRepository.findByIdOrNull(fileId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "File not found")
 
-        // Удаляем физический файл с диска
+        // удаляем файл с диска
         val fileOnDisk = rootLocation.resolve(entity.path)
         Files.deleteIfExists(fileOnDisk)
 
-        // Удаляем запись из базы данных
         fileRepository.deleteById(fileId)
     }
 }
-
-// --- Мапперы ---
 
 private fun FileEntity.toDomain(): DomainFile {
     return DomainFile(
@@ -127,7 +121,7 @@ private fun DomainFile.toDto(): FileDto {
         name = this.name,
         type = this.type,
         // DTO требует URI, создаем его из пути
-        path = URI.create("/api/v2/files/${this.id}"), // Пример ссылки на метаданные
+        path = URI.create("/api/v2/files/${this.id}"),
         uploadedBy = this.uploadedBy,
         uploadedTimestamp = this.uploadedTimestamp
     )

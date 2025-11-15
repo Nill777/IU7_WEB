@@ -16,7 +16,7 @@ class UserDetailsServiceImpl(private val userRepository: UserRepository) : UserD
         return User.builder()
             .username(user.username)
             .password(user.password)
-            .roles(user.role) // Spring автоматически добавит префикс "ROLE_"
+            .roles(user.role)
             .build()
     }
 }

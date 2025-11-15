@@ -20,32 +20,28 @@ import java.util.UUID
 @Service
 class ChatsServiceImpl(
     private val chatRepository: ChatRepository,
-    private val userRepository: UserRepository // Нужен для проверки, что собеседник существует
+    private val userRepository: UserRepository
 ) : ChatsApiService {
 
     override fun createChat(chatCreate: ChatCreate): ChatDto {
-        // TODO: Когда будет JWT, creatorId нужно будет брать из SecurityContext, а не доверять клиенту.
-        // Пока для теста будем считать, что creatorId это просто первый пользователь из БД
         val creatorId = userRepository.findAll().firstOrNull()?.id
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Cannot create chat, no users exist.")
         val companionId = chatCreate.companionId
 
-        // Проверяем, что собеседник существует
+        // собеседник существует
         if (!userRepository.existsById(companionId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "Companion user with id $companionId not found.")
         }
 
-        // Если это личный чат, проверяем, не существует ли он уже
+        // не существует чат
         if (chatCreate.isGroupChat == false) {
             val existingChat = chatRepository.findPrivateChatBetween(creatorId, companionId)
             if (existingChat != null) {
-                // Если чат уже есть, просто возвращаем его, не создавая новый
                 return existingChat.toDomain().toDto()
             }
         }
 
         val entity = ChatEntity(
-            // Если имя не задано, а чат личный, можно назвать его по имени собеседника
             name = chatCreate.name ?: userRepository.findByIdOrNull(companionId)?.username,
             creatorId = creatorId,
             companionId = companionId,
@@ -98,8 +94,6 @@ class ChatsServiceImpl(
         return savedEntity.toDomain().toDto()
     }
 }
-
-// --- Мапперы ---
 
 private fun ChatEntity.toDomain(): DomainChat {
     return DomainChat(

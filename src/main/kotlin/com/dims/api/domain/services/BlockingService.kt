@@ -19,24 +19,24 @@ import java.util.UUID
 @Service
 class BlockingService(
     private val blockRepository: BlockRepository,
-    private val userRepository: UserRepository // Нужен для проверки существования пользователей
+    private val userRepository: UserRepository
 ) : BlockingApiService {
 
     override fun blockUser(userId: UUID, blockCreate: BlockCreate): BlockDto {
         val blockerId = userId
         val blockedUserId = blockCreate.blockedUserId
 
-        // Проверка #1: Пользователь не может заблокировать сам себя
+        // пользователь не может заблокировать сам себя
         if (blockerId == blockedUserId) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "User cannot block themselves.")
         }
 
-        // Проверка #2: Убедимся, что оба пользователя существуют
+        // оба пользователя существуют
         if (!userRepository.existsById(blockerId) || !userRepository.existsById(blockedUserId)) {
             throw ResponseStatusException(HttpStatus.NOT_FOUND, "One or both users not found.")
         }
 
-        // Проверка #3: Убедимся, что такой блокировки еще нет
+        // такой блокировки еще нет
         if (blockRepository.findByBlockerIdAndBlockedUserId(blockerId, blockedUserId) != null) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "This user is already blocked.")
         }
@@ -70,11 +70,9 @@ class BlockingService(
     }
 
     override fun unblockUser(userId: UUID, blockedUserId: UUID) {
-        // Находим существующую блокировку
         val block = blockRepository.findByBlockerIdAndBlockedUserId(userId, blockedUserId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Block record not found.")
 
-        // Удаляем ее
         blockRepository.delete(block)
     }
 }

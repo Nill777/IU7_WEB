@@ -15,8 +15,7 @@ class AppSettingsEntity(
     var messageEncryption: Int = 1, // Enabled
     var historyStorage: Int = 30, // 30 days
 
-    // Указываем, что эта сущность связана с UserEntity
-    // `mappedBy` говорит, что `UserEntity` является "владельцем" этой связи
+    // сущность связана с UserEntity
     @OneToOne(mappedBy = "appSettings")
     var user: UserEntity? = null
 )

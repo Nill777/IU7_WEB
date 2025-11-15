@@ -36,9 +36,11 @@ class JwtRequestFilter(
             if (jwtTokenUtil.validateToken(jwtToken!!, userDetails)) {
                 val authToken = UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
                 authToken.details = WebAuthenticationDetailsSource().buildDetails(request)
+                // помещаем объект аутентификации в SecurityContextHolder
                 SecurityContextHolder.getContext().authentication = authToken
             }
         }
+        // передаем управление следующему фильтру в цепочке
         chain.doFilter(request, response)
     }
 }

@@ -17,7 +17,7 @@ class MessageHistoryEntity(
     @Column(nullable = false)
     var editTimestamp: OffsetDateTime,
 
-    // Связь "многие к одному": много записей в истории ссылаются на одно сообщение
+    // много записей в истории ссылаются на одно сообщение
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "message_id", nullable = false)
     var message: MessageEntity

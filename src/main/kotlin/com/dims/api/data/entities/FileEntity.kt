@@ -12,12 +12,12 @@ class FileEntity(
     val id: UUID? = null,
 
     @Column(nullable = false)
-    var name: String, // Оригинальное имя файла
+    var name: String,
 
-    var type: String?, // MIME-тип
+    var type: String?,
 
     @Column(nullable = false, unique = true)
-    var path: String, // Уникальный путь/имя файла на диске
+    var path: String,
 
     @Column(nullable = false)
     var uploadedBy: UUID,

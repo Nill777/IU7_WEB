@@ -11,14 +11,12 @@ import java.util.UUID
 interface BlockRepository : JpaRepository<BlockEntity, UUID> {
 
     /**
-     * Ищет страницу блокировок по ID того, кто блокирует (blockerId).
-     * Нужно для эндпоинта GET /users/{userId}/blocks.
+     * Ищет страницу блокировок по ID того, кто блокирует (blockerId)
      */
     fun findByBlockerId(blockerId: UUID, pageable: Pageable): Page<BlockEntity>
 
     /**
-     * Ищет конкретную блокировку по ID блокирующего и ID заблокированного.
-     * Нужно для проверки на дубликаты и для удаления.
+     * Ищет конкретную блокировку по ID блокирующего и ID заблокированного
      */
     fun findByBlockerIdAndBlockedUserId(blockerId: UUID, blockedUserId: UUID): BlockEntity?
 }

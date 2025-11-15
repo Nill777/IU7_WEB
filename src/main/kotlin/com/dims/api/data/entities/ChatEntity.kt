@@ -18,6 +18,5 @@ class ChatEntity(
     @Column(nullable = false)
     var isGroupChat: Boolean = false,
 
-    // ID второго участника, если это не групповой чат
     var companionId: UUID?
 )

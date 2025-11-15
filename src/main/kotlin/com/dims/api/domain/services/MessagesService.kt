@@ -31,7 +31,6 @@ class MessagesServiceImpl(
             chatId = chatId,
             content = messageCreate.content,
             fileId = messageCreate.fileId,
-            // TODO: Заменить на ID реального отправителя из SecurityContext
             senderId = chatRepository.findByIdOrNull(chatId)!!.creatorId,
             timestamp = OffsetDateTime.now()
         )
@@ -49,13 +48,12 @@ class MessagesServiceImpl(
         val messages = if (beforeTimestamp != null) {
             messageRepository.findByChatIdAndTimestampBeforeOrderByTimestampDesc(chatId, beforeTimestamp, pageable)
         } else {
-            // Если курсор не задан, начинаем с текущего времени
             messageRepository.findByChatIdAndTimestampBeforeOrderByTimestampDesc(chatId, OffsetDateTime.now(), pageable)
         }
 
         val messageDtos = messages.map { it.toDomain().toDto() }
 
-        // Определяем курсор для следующей страницы - это timestamp самого старого сообщения в текущей пачке
+        // курсор для следующей страницы(timestamp самого старого сообщения)
         val nextCursor = messages.lastOrNull()?.timestamp
 
         return PaginatedMessages(
@@ -75,7 +73,7 @@ class MessagesServiceImpl(
         val entity = messageRepository.findByIdAndChatId(messageId, chatId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Message not found in this chat")
 
-        // Сохраняем старое содержимое в историю
+        // содержимое в историю
         val historyEntry = MessageHistoryEntity(
             message = entity,
             editedContent = entity.content,
@@ -83,9 +81,8 @@ class MessagesServiceImpl(
         )
         entity.history.add(historyEntry)
 
-        // Обновляем сообщение
         entity.content = messageUpdate.content
-        entity.timestamp = OffsetDateTime.now() // Обновляем timestamp на время редактирования
+        entity.timestamp = OffsetDateTime.now()
 
         val savedEntity = messageRepository.save(entity)
         return savedEntity.toDomain().toDto()
@@ -105,9 +102,6 @@ class MessagesServiceImpl(
         return entity.history.map { it.toDomain().toDto() }
     }
 }
-
-
-// --- Мапперы ---
 
 private fun MessageEntity.toDomain(): DomainMessage {
     return DomainMessage(id = id!!, senderId = senderId, chatId = chatId, content = content, fileId = fileId, timestamp = timestamp)

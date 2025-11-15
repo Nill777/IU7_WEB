@@ -24,35 +24,31 @@ class SecurityConfig(
     }
 
     /**
-     * Цепочка безопасности №1 (приоритетная) - ТОЛЬКО для H2 консоли.
-     * @Order(1) делает ее первой в очереди на проверку.
+     * только для H2 консоли
+     * @Order(1) делает первой в очереди на проверку
      */
     @Bean
     @Order(1)
     fun h2ConsoleSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
-            // Применяем эти правила только к путям H2 консоли
+            // правила только к путям H2 консоли
             .securityMatcher(PathRequest.toH2Console())
-            // Разрешаем все запросы к H2 консоли
+            // разрешаем все запросы к H2 консоли
             .authorizeHttpRequests { it.anyRequest().permitAll() }
-            // Отключаем CSRF для H2 консоли
             .csrf { it.disable() }
-            // Разрешаем H2 консоли использовать фреймы
             .headers { it.frameOptions { frameOptions -> frameOptions.sameOrigin() } }
 
         return http.build()
     }
 
     /**
-     * Цепочка безопасности №2 (основная) - для нашего API.
-     * Обрабатывает все остальные запросы.
+     * для API
      */
     @Bean
     @Order(2)
     fun apiSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
             .csrf { it.disable() }
-            // Отключаем CORS, если он не нужен для API
             .cors { it.disable() }
             .authorizeHttpRequests {
                 it.requestMatchers(
