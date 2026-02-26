@@ -1,0 +1,613 @@
+openapi: 3.1.1
+
+info:
+  title: "Distributed Messenger API"
+  version: "1.0.0"
+
+tags:
+  - name: Authentication
+    description: "Операции регистрации и входа в систему."
+  - name: Users
+    description: "Управление профилями пользователей."
+  - name: Chats
+    description: "Управление чатами (полный CRUD)."
+  - name: Messages
+    description: "Управление сообщениями и их историей."
+  - name: Files
+    description: "Загрузка и управление файлами."
+  - name: Blocking
+    description: "Управление блокировками пользователей."
+  - name: Settings
+    description: "Управление настройками пользователя."
+
+servers:
+  - url: "/api/v2"
+    description: "API Version 2"
+
+components:
+  schemas:
+    # --- User Schemas ---
+    User:
+      type: object
+      required: [id, username, role]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        role: { type: string, enum: [UNAUTHORIZED_USER, USER, MODERATOR, ADMINISTRATOR] }
+        profileSettingsId: { type: string, format: uuid }
+        appSettingsId: { type: string, format: uuid }
+
+    UserCreate:
+      type: object
+      required: [username]
+      properties:
+        username: { type: string }
+        role: { type: string, enum: [USER, MODERATOR, ADMINISTRATOR], default: USER }
+
+    UserLogin:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string, format: password }
+
+    UserUpdate:
+      type: object
+      properties:
+        username: { type: string }
+        role: { type: string, enum: [USER, MODERATOR, ADMINISTRATOR] }
+    
+    # --- Chat Schemas ---
+    Chat:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        creatorId: { type: string, format: uuid }
+        isGroupChat: { type: boolean }
+        companionId: { type: string, format: uuid, nullable: true }
+
+    ChatCreate:
+      type: object
+      required: [companionId]
+      properties:
+        name: { type: string, description: "Необязательное имя чата." }
+        companionId: { type: string, format: uuid }
+        isGroupChat: { type: boolean, default: false }
+
+    ChatUpdate:
+      type: object
+      properties:
+        name: { type: string }
+
+    # --- Message Schemas ---
+    Message:
+      type: object
+      required: [id, senderId, chatId, content, timestamp]
+      properties:
+        id: { type: string, format: uuid }
+        senderId: { type: string, format: uuid }
+        chatId: { type: string, format: uuid }
+        content: { type: string }
+        fileId: { type: string, format: uuid, nullable: true }
+        timestamp: { type: string, format: date-time }
+
+    MessageHistory:
+      type: object
+      required: [historyId, messageId, editedContent, editTimestamp]
+      properties:
+        historyId: { type: string, format: uuid }
+        messageId: { type: string, format: uuid }
+        editedContent: { type: string }
+        editTimestamp: { type: string, format: date-time }
+
+    MessageCreate:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string }
+        fileId: { type: string, format: uuid, nullable: true }
+
+    MessageUpdate:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string }
+
+    # --- File Schemas ---
+    File:
+      type: object
+      required: [id, name, path, uploadedBy, uploadedTimestamp]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type: { type: string, nullable: true }
+        path: { type: string, format: uri }
+        uploadedBy: { type: string, format: uuid }
+        uploadedTimestamp: { type: string, format: date-time }
+
+    # --- Block Schemas ---
+    Block:
+      type: object
+      required: [id, blockerId, blockedUserId, timestamp]
+      properties:
+        id: { type: string, format: uuid }
+        blockerId: { type: string, format: uuid }
+        blockedUserId: { type: string, format: uuid }
+        reason: { type: string, nullable: true }
+        timestamp: { type: string, format: date-time }
+    
+    BlockCreate:
+      type: object
+      required: [blockedUserId]
+      properties:
+        blockedUserId: { type: string, format: uuid }
+        reason: { type: string, nullable: true }
+        
+    # --- AppSettings Schemas ---
+    AppSettings:
+      type: object
+      properties:
+        THEME: { type: integer, enum: [0, 1, 2], description: "0: System, 1: Light, 2: Dark" }
+        MAX_FILE_SIZE: { type: integer, enum: [10, 50, 100] }
+        MESSAGE_ENCRYPTION: { type: integer, enum: [0, 1] }
+        HISTORY_STORAGE: { type: integer, enum: [7, 30, 365] }
+          
+    # --- Common & Pagination Schemas ---
+    AuthToken:
+      type: object
+      properties:
+        accessToken: { type: string, format: jwt }
+        userId: { type: string, format: uuid }
+
+    Error:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+
+    PaginationInfo:
+      type: object
+      description: "Метаданные для постраничной навигации."
+      properties:
+        totalItems: { type: integer }
+        totalPages: { type: integer }
+        currentPage: { type: integer }
+        limit: { type: integer }
+
+    PaginatedUsers:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/User' } }
+        pagination: { $ref: '#/components/schemas/PaginationInfo' }
+
+    PaginatedChats:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Chat' } }
+        pagination: { $ref: '#/components/schemas/PaginationInfo' }
+        
+    PaginatedBlocks:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Block' } }
+        pagination: { $ref: '#/components/schemas/PaginationInfo' }
+
+    PaginatedMessages:
+      type: object
+      description: "Страница с сообщениями, использующая курсорную пагинацию."
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Message' } }
+        nextCursor: { type: string, format: date-time, nullable: true, description: "Timestamp последнего сообщения для запроса следующей страницы." }
+        hasNextPage: { type: boolean }
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  # --- Authentication ---
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: "Регистрация нового пользователя"
+      operationId: "registerUser"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/UserCreate' } }
+      responses:
+        '201':
+          description: "Пользователь создан."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/User' } }
+        '409': { description: "Пользователь с таким именем уже существует." }
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: "Аутентификация пользователя"
+      operationId: "loginUser"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/UserLogin' } }
+      responses:
+        '200':
+          description: "Успешный вход."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/AuthToken' } }
+        '401': { description: "Ошибка аутентификации." }
+
+  # --- Users ---
+  /users:
+    get:
+      tags: [Users]
+      summary: "Получить список всех пользователей (Admin)"
+      operationId: "getAllUsers"
+      parameters:
+        - { name: username, in: query, schema: { type: string } }
+        - { name: page, in: query, description: "Номер страницы", schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, description: "Количество элементов на странице", schema: { type: integer, default: 25 } }
+      responses:
+        '200':
+          description: "Страница со списком пользователей."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginatedUsers' }
+        '403': { description: "Доступ запрещен." }
+
+  /users/{userId}:
+    get:
+      tags: [Users]
+      summary: "Получить пользователя по ID"
+      operationId: "getUserById"
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: "Профиль пользователя."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/User' } }
+        '404': { description: "Пользователь не найден." }
+    patch:
+      tags: [Users]
+      summary: "Обновить пользователя по ID"
+      operationId: "updateUser"
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/UserUpdate' } }
+      responses:
+        '200':
+          description: "Пользователь обновлен."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/User' } }
+        '403': { description: "Доступ запрещен." }
+        '404': { description: "Пользователь не найден." }
+    delete:
+      tags: [Users]
+      summary: "Удалить пользователя по ID (Admin)"
+      operationId: "deleteUser"
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: "Пользователь удален." }
+        '403': { description: "Доступ запрещен." }
+        '404': { description: "Пользователь не найден." }
+
+  # --- Chats ---
+  /chats:
+    get:
+      tags: [Chats]
+      summary: "Получить список чатов"
+      description: "Возвращает список чатов. Требуется фильтрация по `userId`."
+      operationId: "getChats"
+      parameters:
+        - { name: userId, in: query, required: true, description: "Фильтр для получения чатов конкретного пользователя.", schema: { type: string, format: uuid } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 25 } }
+      responses:
+        '200':
+          description: "Страница со списком чатов."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginatedChats' }
+        '403': { description: "Доступ запрещен." }
+    post:
+      tags: [Chats]
+      summary: "Создать новый чат"
+      operationId: "createChat"
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/ChatCreate' } }
+      responses:
+        '201':
+          description: "Чат создан."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/Chat' } }
+        
+  /chats/{chatId}:
+    get:
+      tags: [Chats]
+      summary: "Получить чат по ID"
+      operationId: "getChatById"
+      parameters:
+        - { name: chatId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: "Информация о чате."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/Chat' } }
+        '404': { description: "Чат не найден." }
+    patch:
+      tags: [Chats]
+      summary: "Обновить название чата"
+      operationId: "updateChat"
+      parameters:
+        - { name: chatId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/ChatUpdate' } }
+      responses:
+        '200':
+          description: "Чат обновлен."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/Chat' } }
+        '404': { description: "Чат не найден." }
+    delete:
+      tags: [Chats]
+      summary: "Удалить чат"
+      operationId: "deleteChat"
+      parameters:
+        - { name: chatId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: "Чат удален." }
+        '404': { description: "Чат не найден." }
+
+  # --- Messages ---
+  /chats/{chatId}/messages:
+    get:
+      tags: [Messages]
+      summary: "Получить историю сообщений"
+      operationId: "getChatMessages"
+      parameters:
+        - { name: chatId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: before_timestamp, in: query, description: "Курсор для получения сообщений старше указанной временной метки.", schema: { type: string, format: date-time } }
+      responses:
+        '200':
+          description: "Страница со списком сообщений."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginatedMessages' }
+        '404': { description: "Чат не найден." }
+    post:
+      tags: [Messages]
+      summary: "Отправить сообщение"
+      operationId: "sendMessage"
+      parameters:
+        - { name: chatId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/MessageCreate' } }
+      responses:
+        '201':
+          description: "Сообщение создано."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/Message' } }
+        '404': { description: "Чат не найден." }
+
+  /chats/{chatId}/messages/{messageId}:
+    get:
+      tags: [Messages]
+      summary: "Получить сообщение по ID"
+      operationId: "getMessageById"
+      parameters:
+        - { name: chatId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: messageId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: "Данные сообщения."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/Message' } }
+        '404': { description: "Сообщение не найдено." }
+    patch:
+      tags: [Messages]
+      summary: "Редактировать сообщение"
+      operationId: "editMessage"
+      parameters:
+        - { name: chatId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: messageId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/MessageUpdate' } }
+      responses:
+        '200':
+          description: "Сообщение обновлено."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/Message' } }
+        '403': { description: "Доступ запрещен." }
+        '404': { description: "Сообщение не найдено." }
+    delete:
+      tags: [Messages]
+      summary: "Удалить сообщение"
+      operationId: "deleteMessage"
+      parameters:
+        - { name: chatId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: messageId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: "Сообщение удалено." }
+        '403': { description: "Доступ запрещен." }
+        '404': { description: "Сообщение не найдено." }
+
+  /chats/{chatId}/messages/{messageId}/history:
+    get:
+      tags: [Messages]
+      summary: "Получить историю изменений сообщения"
+      operationId: "getMessageHistory"
+      parameters:
+        - { name: chatId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: messageId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: "Список изменений."
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/MessageHistory' } }
+        '404': { description: "Сообщение не найдено." }
+
+  # --- Files ---
+  /files:
+    post:
+      tags: [Files]
+      summary: "Загрузить новый файл"
+      operationId: "uploadFile"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: "Файл успешно загружен."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/File' } }
+
+  /files/{fileId}/download:
+    get:
+      tags: [Files]
+      summary: "Скачать файл по ID"
+      operationId: "downloadFile"
+      parameters:
+        - { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: "Содержимое файла."
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: "Позволяет клиенту (браузеру) сохранить файл с оригинальным именем."
+              schema:
+                type: string
+                example: 'attachment; filename="example.jpg"'
+        '404': { description: "Файл не найден." }
+
+  /files/{fileId}:
+    get:
+      tags: [Files]
+      summary: "Получить метаданные файла"
+      operationId: "getFileMetadata"
+      parameters:
+        - { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: "Метаданные файла."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/File' } }
+        '404': { description: "Файл не найден." }
+    delete:
+      tags: [Files]
+      summary: "Удалить файл"
+      operationId: "deleteFile"
+      parameters:
+        - { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: "Файл удален." }
+        '404': { description: "Файл не найден." }
+        
+  # --- Blocking ---
+  /users/{userId}/blocks:
+    get:
+      tags: [Blocking]
+      summary: "Получить список заблокированных пользователей для userId"
+      operationId: "getBlockedUsers"
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: page, in: query, description: "Номер страницы", schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, description: "Количество элементов на странице", schema: { type: integer, default: 25 } }
+      responses:
+        '200':
+          description: "Страница со списком блокировок."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginatedBlocks' }
+        '403': { description: "Доступ запрещен." }
+    post:
+      tags: [Blocking]
+      summary: "Заблокировать пользователя от имени userId"
+      operationId: "blockUser"
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/BlockCreate' } }
+      responses:
+        '201':
+          description: "Пользователь заблокирован."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/Block' } }
+        '403': { description: "Доступ запрещен." }
+  
+  /users/{userId}/blocks/{blockedUserId}:
+    delete:
+      tags: [Blocking]
+      summary: "Разблокировать пользователя от имени userId"
+      operationId: "unblockUser"
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: blockedUserId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: "Пользователь разблокирован." }
+        '403': { description: "Доступ запрещен." }
+        '404': { description: "Запись о блокировке не найдена." }
+        
+  # --- Settings ---
+  /users/{userId}/settings:
+    get:
+      tags: [Settings]
+      summary: "Получить настройки пользователя"
+      operationId: "getAppSettings"
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: "Объект с настройками."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/AppSettings' } }
+        '403': { description: "Доступ запрещен." }
+    patch:
+      tags: [Settings]
+      summary: "Обновить настройки пользователя"
+      operationId: "updateAppSettings"
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AppSettings' }
+      responses:
+        '200':
+          description: "Настройки обновлены."
+          content:
+            application/json: { schema: { $ref: '#/components/schemas/AppSettings' } }
+        '403': { description: "Доступ запрещен." }
