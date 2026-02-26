@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   postgres:
     image: postgres:14-alpine
@@ -8,35 +10,55 @@ services:
       POSTGRES_DB: weblab_db
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - monitoring
 
   gateway:
     build: ./gateway-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=gateway
+      - SERVICE_CORE_URL=http://core:8080
+      - SERVER_PORT=8080
     deploy:
       replicas: 3
+    depends_on:
+      - core
     networks:
       - monitoring
-    depends_on:
-      - postgres
 
   core:
     build: ./core-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=core
+      - SERVICE_DATA_URL=http://data:8080
+      - jwt.secret=ThisIsASecretKeyForWebLabAndItShouldBeLongEnoughAndSecureAndRandom123
+      - jwt.expiration=3600000
+      - SERVER_PORT=8080
     deploy:
       replicas: 3
+    depends_on:
+      - data
     networks:
       - monitoring
-    depends_on:
-      - postgres
 
   data:
     build: ./data-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=data
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/weblab_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SERVER_PORT=8080
     deploy:
       replicas: 3
-    networks:
-      - monitoring
     depends_on:
       - postgres
+    networks:
+      - monitoring
 
   # мониторинг
   loki:
@@ -84,3 +106,6 @@ services:
 
 networks:
   monitoring:
+
+volumes:
+  postgres_data:
